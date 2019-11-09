@@ -1,8 +1,8 @@
-const db = require('../utils/database');
+// const db = require('../utils/database');
 const { Users, AccountBase } = require('./baseList');
 const crypto = require('crypto');
 const fs = require('fs');
-const path = require('path');
+// const path = require('path');
 
 const md5 = pass => { // 避免多次调用 MD5 报错
   let md5 = crypto.createHash('md5');
@@ -144,6 +144,77 @@ const getUserInfo = (params, callback) => {
     })
   }
 }
+// 获取vchat官方账号信息
+const getVchatInfo = (callback) => {
+  Users.find({ name: 'Vchat' }).then(r => {
+    if (r.length) {
+      const { name, photo, nickname, signature, _id } = r[0];
+      const response = { name, photo, nickname, signature, id: _id };
+      callback({ code: 0, data: response });
+    } else {
+      callback({ code: -1 });
+    }
+  })
+}
+// 获取登录用户详细信息
+const getUserDetail = (userName, callback) => {
+  Users.find({ name: userName }).then(r => {
+    if (r.length) {
+      const { nickname, signature, sex, phone, email, province, city, town } = r[0];
+      const response = { nickname, signature, sex, phone, email, province, city, town };
+      callback({ code: 0, data: response });
+    } else {
+      callback({ code: -1 });
+    }
+  })
+}
+// 添加会话
+const addConversitionList = (userName, params, callback) => {
+  Users.update({name: userName}, {$push: {conversationsList: params}}).then(raw => {
+    if (raw.nModified > 0) {
+      callback({ code: 0 });
+    } else {
+      callback({ code: -1 });
+    }
+  })
+}
+// 删除会话
+const removeConversitionList = (userName, params, callback) => {
+  Users.update({name: userName}, {$pull: {conversationsList: {id: params.id}}}).then(raw => {
+    if (raw.nModified > 0) {
+      callback({ code: 0 });
+    } else {
+      callback({ code: -1 });
+    }
+  })
+}
+// 获取登录用户详细信息
+const huntFriends = (params, callback) => {
+  let key = new RegExp(params.key);
+  let arr = [];
+  params.type === '2' ? arr = [{'nickname': {'$regex': key, $options: '$i'}}] : arr = [{
+    'code': {
+      '$regex': key,
+      $options: '$i'
+    }
+  }];
+  Users.count(
+    { $or: arr },
+    (err, count) => {
+      if (count > 0) {
+        Users
+          .find({$or: arr, name: {'$ne': 'Vchat'}}, {nickname: 1, photo: 1, signature: 1})
+          .skip((params.offset - 1) * params.limit)
+          .limit(params.limit)
+          .sort({ name: 1})
+          .then(r => {callback({ code: 0, data: r, count })})
+          .catch(err => callback({ code: -1 }));
+      } else {
+        callback({ code: 0, data: [], count: 0 });
+      }
+    }
+  )
+}
 
 module.exports = {
   getUser,
@@ -151,5 +222,9 @@ module.exports = {
   upUserInfo,
   signUp,
   getUserInfo,
-
+  getVchatInfo,
+  getUserDetail,
+  addConversitionList,
+  removeConversitionList,
+  huntFriends,
 }

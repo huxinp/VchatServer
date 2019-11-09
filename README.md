@@ -1,0 +1,1 @@
+此项目照抄 Vchat 项目，用以学习， Vchat 地址 https://github.com/wuyawei/Vchat
